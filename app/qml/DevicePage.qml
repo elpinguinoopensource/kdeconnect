@@ -226,6 +226,14 @@ Kirigami.ScrollablePage {
                 device: root.currentDevice
             },
             PluginItem {
+                name: i18nd("kdeconnect-app", "Camera")
+                interfaceFactory: CameraDbusInterfaceFactory
+                component: "CameraPage.qml"
+                pluginName: "camera"
+                section: "action"
+                device: root.currentDevice
+            },
+            PluginItem {
                 readonly property QtObject sftp: SftpDbusInterfaceFactory.create(root.currentDevice.id())
                 pluginName: "sftp"
                 name: i18n("Browse this device")

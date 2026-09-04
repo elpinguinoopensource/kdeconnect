@@ -18,6 +18,15 @@ set(kdeconnect_libraries
 )
 
 ecm_add_test(notificationstest.cpp LINK_LIBRARIES ${kdeconnect_libraries})
+ecm_add_test(camerastreamtest.cpp LINK_LIBRARIES ${kdeconnect_libraries})
+target_sources(camerastreamtest PRIVATE
+    ${CMAKE_SOURCE_DIR}/plugins/camera/streamwriter.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/../plugins/camera/plugin_camera_debug.cpp
+)
+target_include_directories(camerastreamtest PRIVATE
+    ${CMAKE_SOURCE_DIR}/plugins/camera
+    ${CMAKE_CURRENT_BINARY_DIR}/../plugins/camera
+)
 ecm_add_test(pluginloadtest.cpp LINK_LIBRARIES ${kdeconnect_libraries})
 ecm_add_test(sendfiletest.cpp LINK_LIBRARIES ${kdeconnect_libraries})
 target_sources(sendfiletest PRIVATE testdevice.cpp)

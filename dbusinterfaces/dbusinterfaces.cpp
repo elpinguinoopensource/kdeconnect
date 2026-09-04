@@ -199,4 +199,13 @@ ClipboardDbusInterface::ClipboardDbusInterface(const QString &deviceId, QObject 
     connect(this, &OrgKdeKdeconnectDeviceClipboardInterface::autoShareDisabledChanged, this, &ClipboardDbusInterface::autoShareDisabledChangedProxy);
 }
 
+CameraDeviceDbusInterface::CameraDeviceDbusInterface(const QString &deviceId, QObject *parent)
+    : OrgKdeKdeconnectDeviceCameraInterface(DaemonDbusInterface::activatedService(),
+                                            QLatin1String("/modules/kdeconnect/devices/%1/camera").arg(deviceId),
+                                            QDBusConnection::sessionBus(),
+                                            parent)
+{
+    connect(this, &OrgKdeKdeconnectDeviceCameraInterface::streamingChanged, this, &CameraDeviceDbusInterface::streamingChangedProxy);
+}
+
 #include "moc_dbusinterfaces.cpp"

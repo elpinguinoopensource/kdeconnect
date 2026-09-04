@@ -397,6 +397,18 @@ public:
     }
 };
 
+class CameraDbusInterfaceFactory : public QObject
+{
+    Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
+public:
+    Q_INVOKABLE CameraDeviceDbusInterface *create(const QString &deviceId)
+    {
+        return new CameraDeviceDbusInterface(deviceId);
+    }
+};
+
 class RemoteCommandsDbusInterfaceFactory : public QObject
 {
     Q_OBJECT

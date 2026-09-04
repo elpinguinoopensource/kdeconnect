@@ -1,0 +1,27 @@
+{
+    "$schema": "../kdeconnect.schema.json",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "alfredomedranosanchez@gmail.com",
+                "Name": "Alfredo Medrano Sanchez"
+            }
+        ],
+        "Description": "Use the device camera as a webcam",
+        "EnabledByDefault": false,
+        "Icon": "camera-web",
+        "License": "GPL",
+        "Name": "Camera"
+    },
+    "X-KdeConnect-OutgoingPacketType": [
+        "kdeconnect.camera.list",
+        "kdeconnect.camera.start",
+        "kdeconnect.camera.stop"
+    ],
+    "X-KdeConnect-SupportedPacketType": [
+        "kdeconnect.camera.list",
+        "kdeconnect.camera.stream",
+        "kdeconnect.camera.stop",
+        "kdeconnect.camera.error"
+    ]
+}
