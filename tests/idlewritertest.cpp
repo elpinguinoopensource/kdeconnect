@@ -119,6 +119,32 @@ private Q_SLOTS:
         delete writer; // Must reap the child without crashing.
         QVERIFY(true);
     }
+
+    void testFfmpegArgsPaceInputWithRe()
+    {
+        // Regression: the cover ffmpeg ran at ~670% CPU because -framerate 5
+        // only sets a logical input rate. Without -re ffmpeg ignores the wall
+        // clock and pushes frames to the v4l2 muxer as fast as they are
+        // accepted (v4l2loopback never blocks a writer with no reader).
+        const QStringList args = IdleWriter::ffmpegArgs(
+            QStringLiteral("/tmp/cover.png"), QStringLiteral("/dev/video10"), 1280, 720);
+
+        const int reIndex = args.indexOf(QStringLiteral("-re"));
+        const int inputIndex = args.indexOf(QStringLiteral("-i"));
+        QVERIFY2(reIndex >= 0, "missing -re: the cover pipeline floods the device and burns CPU");
+        QVERIFY2(inputIndex >= 0, "missing -i input");
+        // -re is an INPUT option: it must appear before -i to apply to the
+        // looped image, not to the output.
+        QVERIFY2(reIndex < inputIndex, "-re must precede -i (input pacing)");
+
+        // The rest of the pipeline contract the owner relies on.
+        QCOMPARE(args.indexOf(QStringLiteral("-f")) >= 0, true);
+        QCOMPARE(args.last(), QStringLiteral("/dev/video10"));
+        QVERIFY(args.contains(QStringLiteral("v4l2")));
+        QVERIFY(args.contains(QStringLiteral("/tmp/cover.png")));
+        // The scale/pad filter must target the negotiated device size.
+        QVERIFY(args.filter(QStringLiteral("scale=1280:720")).size() == 1);
+    }
 };
 
 QTEST_GUILESS_MAIN(IdleWriterTest)

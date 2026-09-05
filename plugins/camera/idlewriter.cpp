@@ -200,15 +200,6 @@ bool IdleWriter::start()
     int height = 720;
     queryDeviceSize(m_devicePath, width, height);
 
-    // Centre the logo at any consumer resolution on the same #232629
-    // background used by the PNG, and letterbox it (decrease + pad). 5 fps is
-    // plenty for a static image and keeps CPU usage near zero.
-    const QString filter = QStringLiteral(
-                               "scale=%1:%2:force_original_aspect_ratio=decrease,"
-                               "pad=%1:%2:(ow-iw)/2:(oh-ih)/2:color=0x232629,format=yuv420p")
-                               .arg(width)
-                               .arg(height);
-
     QProcess *process = new QProcess(this);
     process->setProcessChannelMode(QProcess::MergedChannels);
     m_process = process;
@@ -245,23 +236,41 @@ bool IdleWriter::start()
     qCDebug(KDECONNECT_PLUGIN_CAMERA) << "IdleWriter: starting cover ffmpeg" << width << 'x' << height
                                       << "->" << m_devicePath;
 
-    process->start(ffmpeg,
-                   {QStringLiteral("-hide_banner"),
-                    QStringLiteral("-loglevel"),
-                    QStringLiteral("warning"),
-                    QStringLiteral("-loop"),
-                    QStringLiteral("1"),
-                    QStringLiteral("-framerate"),
-                    QStringLiteral("5"),
-                    QStringLiteral("-i"),
-                    cover,
-                    QStringLiteral("-vf"),
-                    filter,
-                    QStringLiteral("-f"),
-                    QStringLiteral("v4l2"),
-                    m_devicePath});
+    process->start(ffmpeg, ffmpegArgs(cover, m_devicePath, width, height));
 
     return m_running;
+}
+
+QStringList IdleWriter::ffmpegArgs(const QString &cover, const QString &device, int width, int height)
+{
+    // Centre the logo at any consumer resolution on the same #232629
+    // background used by the PNG, and letterbox it (decrease + pad). 5 fps is
+    // plenty for a static image. -re paces the *input* against the wall
+    // clock: without it ffmpeg ignores the logical -framerate, rescales the
+    // looped PNG and hands frames to the v4l2 muxer as fast as it will take
+    // them (v4l2loopback never blocks a writer when no reader is attached),
+    // which burns hundreds of percent CPU for a frame that never changes.
+    const QString filter = QStringLiteral(
+                               "scale=%1:%2:force_original_aspect_ratio=decrease,"
+                               "pad=%1:%2:(ow-iw)/2:(oh-ih)/2:color=0x232629,format=yuv420p")
+                               .arg(width)
+                               .arg(height);
+
+    return {QStringLiteral("-hide_banner"),
+            QStringLiteral("-loglevel"),
+            QStringLiteral("warning"),
+            QStringLiteral("-re"),
+            QStringLiteral("-loop"),
+            QStringLiteral("1"),
+            QStringLiteral("-framerate"),
+            QStringLiteral("5"),
+            QStringLiteral("-i"),
+            cover,
+            QStringLiteral("-vf"),
+            filter,
+            QStringLiteral("-f"),
+            QStringLiteral("v4l2"),
+            device};
 }
 
 void IdleWriter::stop()

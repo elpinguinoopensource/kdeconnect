@@ -11,6 +11,7 @@
 #include <QPointer>
 #include <QProcess>
 #include <QString>
+#include <QStringList>
 
 /**
  * Keeps a v4l2loopback /dev/video device alive with a static cover image
@@ -58,6 +59,13 @@ public:
 
     /// Test override: use this PNG instead of the embedded qrc copy.
     void setImagePath(const QString &path);
+
+    /// Builds the ffmpeg argument vector for the cover feed. Factored out of
+    /// start() and public so it can be asserted without a device or a running
+    /// ffmpeg: the "-re" pacing flag MUST precede "-i", otherwise ffmpeg
+    /// ignores the logical -framerate and floods the v4l2 node at full speed
+    /// (v4l2loopback never blocks a writer with no reader), burning CPU.
+    static QStringList ffmpegArgs(const QString &cover, const QString &device, int width, int height);
 
 Q_SIGNALS:
     /// The cover writer failed or was torn down abnormally.
