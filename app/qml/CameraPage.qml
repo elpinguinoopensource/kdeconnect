@@ -60,6 +60,8 @@ Kirigami.ScrollablePage {
             return i18ndc("kdeconnect-app", "Camera error, device went away mid-stream", "Device disconnected")
         case "stopped":
             return i18ndc("kdeconnect-app", "Camera error, stream stopped on the device", "Stream stopped on the device")
+        case "ended":
+            return i18ndc("kdeconnect-app", "Camera stream ended normally on the device", "Stream ended")
         case "no_payload":
             return i18ndc("kdeconnect-app", "Camera error, malformed camera packet", "Invalid camera request")
         default:
@@ -207,9 +209,16 @@ Kirigami.ScrollablePage {
 
         QQC2.Label {
             Kirigami.FormData.label: i18nc("@label", "Status:")
-            text: root.pluginInterface && root.pluginInterface.streaming
-                ? i18nd("kdeconnect-app", "Streaming to /dev/videoX ...")
-                : i18ndc("kdeconnect-app", "Camera stream state", "Idle")
+            text: {
+                if (!(root.pluginInterface && root.pluginInterface.streaming)) {
+                    return i18ndc("kdeconnect-app", "Camera stream state", "Idle")
+                }
+                var path = root.pluginInterface.devicePath
+                if (path && path.length > 0) {
+                    return i18nd("kdeconnect-app", "Streaming to %1 ...").arg(path)
+                }
+                return i18nd("kdeconnect-app", "Streaming ...")
+            }
         }
 
         Kirigami.InlineMessage {

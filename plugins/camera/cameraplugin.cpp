@@ -29,6 +29,20 @@ bool CameraPlugin::streaming() const
     return m_streamActive;
 }
 
+QString CameraPlugin::devicePath() const
+{
+    return m_devicePath;
+}
+
+void CameraPlugin::setDevicePath(const QString &devicePath)
+{
+    if (m_devicePath == devicePath) {
+        return;
+    }
+    m_devicePath = devicePath;
+    Q_EMIT devicePathChanged(m_devicePath);
+}
+
 void CameraPlugin::setStreaming(bool streaming)
 {
     if (m_streamActive == streaming) {
@@ -63,7 +77,7 @@ void CameraPlugin::startCamera(const QString &cameraId, int width, int height, i
     NetworkPacket np(PACKET_TYPE_CAMERA_START, body);
     sendPacket(np);
 
-    // Stream is not up until the first packet arrives (handled in DESK-2).
+    // The stream is not up until the first stream packet arrives from the device.
     setStreaming(false);
 }
 
@@ -76,6 +90,7 @@ void CameraPlugin::stopCamera()
     const bool wasActive = m_streamActive;
     stopWriter();
     setStreaming(false);
+    setDevicePath(QString());
     if (wasActive) {
         Q_EMIT streamStopped(QStringLiteral("stopped"));
     }
@@ -165,6 +180,11 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
     StreamWriter *writer = new StreamWriter(payload, width, height, fps, this);
     m_writer = writer;
 
+    // The StreamWriter constructor auto-detected the v4l2loopback node; expose
+    // it over DBus so the QML status label can show the real /dev/video path
+    // instead of a placeholder.
+    setDevicePath(writer->devicePath());
+
     QPointer<StreamWriter> writerGuard = writer;
     connect(writer,
             &StreamWriter::finished,
@@ -175,6 +195,7 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
                     m_writer = nullptr;
                 }
                 setStreaming(false);
+                setDevicePath(QString());
                 Q_EMIT streamStopped(QStringLiteral("ended"));
                 if (writerGuard) {
                     writerGuard->deleteLater();
@@ -195,6 +216,7 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
                     m_writer = nullptr;
                 }
                 setStreaming(false);
+                setDevicePath(QString());
                 Q_EMIT errorReceived(reason);
                 Q_EMIT streamStopped(reason);
                 if (writerGuard) {
@@ -233,6 +255,7 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
         if (m_writer == writer) {
             m_writer = nullptr;
             setStreaming(false);
+            setDevicePath(QString());
         }
         writer->deleteLater();
         // The live pipeline never owned the node: bring the cover back.
@@ -257,6 +280,7 @@ void CameraPlugin::receivePacket(const NetworkPacket &np)
         const bool wasActive = m_streamActive;
         stopWriter();
         setStreaming(false);
+        setDevicePath(QString());
         if (wasActive) {
             Q_EMIT streamStopped(QStringLiteral("stopped"));
         }
@@ -268,6 +292,7 @@ void CameraPlugin::receivePacket(const NetworkPacket &np)
         Q_EMIT errorReceived(error);
         // Any error (including disconnected/stopped) means the stream is over.
         setStreaming(false);
+        setDevicePath(QString());
         Q_EMIT streamStopped(error);
         resumeIdle();
     }

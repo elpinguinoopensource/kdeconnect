@@ -26,12 +26,17 @@ class CameraPlugin : public KdeConnectPlugin
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.kde.kdeconnect.device.camera")
     Q_PROPERTY(bool streaming READ streaming NOTIFY streamingChanged)
+    Q_PROPERTY(QString devicePath READ devicePath NOTIFY devicePathChanged)
 
 public:
     using KdeConnectPlugin::KdeConnectPlugin;
     ~CameraPlugin() override;
 
     bool streaming() const;
+
+    /// v4l2loopback device the live stream is being written to, empty when no
+    /// stream is active (or detection found no usable node).
+    QString devicePath() const;
 
     Q_SCRIPTABLE QVariantList listCameras();
     Q_SCRIPTABLE void refreshCameraList();
@@ -44,6 +49,7 @@ public:
 
 Q_SIGNALS:
     Q_SCRIPTABLE void streamingChanged(bool streaming);
+    Q_SCRIPTABLE void devicePathChanged(const QString &devicePath);
     Q_SCRIPTABLE void streamPacketReceived();
     Q_SCRIPTABLE void streamStopped(const QString &reason);
     Q_SCRIPTABLE void cameraListReceived(const QVariantList &cameras);
@@ -51,6 +57,7 @@ Q_SIGNALS:
 
 private:
     void setStreaming(bool streaming);
+    void setDevicePath(const QString &devicePath);
     void handleStreamPacket(const NetworkPacket &np);
     /// Stops and destroys the active StreamWriter (if any); closes the payload.
     void stopWriter();
@@ -63,6 +70,7 @@ private:
 
     QVariantList m_cameras;
     bool m_streamActive = false;
+    QString m_devicePath;
     StreamWriter *m_writer = nullptr;
     IdleWriter *m_idle = nullptr;
 };

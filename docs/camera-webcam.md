@@ -59,7 +59,7 @@ Core plumbing relied upon (verified in `core/`):
 | File | Responsibility |
 |---|---|
 | `plugins/camera/cameraplugin.{h,cpp}` | DBus API (`org.kde.kdeconnect.device.camera`), packet routing, ffmpeg lifecycle |
-| `plugins/camera/streamwriter.{h,cpp}` | payload → ffmpeg stdin; 8 MB/4 MB backpressure watermarks; device selection via `VIDIOC_QUERYCAP` (`V4L2_CAP_VIDEO_OUTPUT`); debug raw dump |
+| `plugins/camera/streamwriter.{h,cpp}` | payload → ffmpeg stdin; 512 KB/256 KB backpressure watermarks; device selection via `VIDIOC_QUERYCAP` (`V4L2_CAP_VIDEO_OUTPUT`); debug raw dump |
 | `plugins/camera/kdeconnect_camera.json` | incoming/outgoing capabilities |
 | `plugins/camera/kdeconnect_camera_config.qml` | plugin config (default width/height/fps/bitrate) |
 | `plugins/camera/README.md` | **v4l2loopback setup, requirements, troubleshooting** |
@@ -159,7 +159,7 @@ The final, hardware-verified argument set:
 
 ```
 ffmpeg -hide_banner -loglevel warning -probesize 131072 -analyzeduration 0
-       -flags low_delay -threads 1 -f h264 -framerate <fps> -i pipe:0
+       -flags low_delay -threads 0 -thread_type slice -f h264 -framerate <fps> -i pipe:0
        -f v4l2 -pix_fmt yuv420p /dev/videoN
 ```
 
@@ -170,9 +170,12 @@ ffmpeg -hide_banner -loglevel warning -probesize 131072 -analyzeduration 0
   streams (no AUD) do **not** reproduce it — only real phone streams do. This
   regression cost a full debug cycle; the rationale is also a code comment at
   `streamwriter.cpp` (~line 228).
-- `-threads 1`, not `-thread_count 1` (the latter is the x264/openh264 private
-  name; ffmpeg exits at argument parsing with code 8 "Unrecognized option").
-  Default frame-parallel decoding pipelines 4–6 frames (~200 ms at 30 fps).
+- `-threads 0 -thread_type slice`, not `-thread_count 1` (the latter is the
+  x264/openh264 private name; ffmpeg exits at argument parsing with code 8
+  "Unrecognized option"). `-threads 0` lets ffmpeg pick the thread count, and
+  restricting parallelism to slice threading decodes several slices of the
+  *same* frame concurrently without ever holding a frame back. The default
+  frame threading pipelines 4–6 frames (~200 ms at 30 fps).
 - `probesize 131072` + `analyzeduration 0`: defaults buffer up to 5 MB/5 s of
   stream before the first frame. SPS+PPS+IDR are in-band, 128 KB is plenty.
 - The raw stream has no timing metadata; consumers must force `-framerate`
