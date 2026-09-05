@@ -16,7 +16,8 @@
     "X-KdeConnect-OutgoingPacketType": [
         "kdeconnect.camera.list",
         "kdeconnect.camera.start",
-        "kdeconnect.camera.stop"
+        "kdeconnect.camera.stop",
+        "kdeconnect.camera.stats"
     ],
     "X-KdeConnect-SupportedPacketType": [
         "kdeconnect.camera.list",

@@ -16,6 +16,7 @@
 #define PACKET_TYPE_CAMERA_STREAM QStringLiteral("kdeconnect.camera.stream")
 #define PACKET_TYPE_CAMERA_STOP QStringLiteral("kdeconnect.camera.stop")
 #define PACKET_TYPE_CAMERA_ERROR QStringLiteral("kdeconnect.camera.error")
+#define PACKET_TYPE_CAMERA_STATS QStringLiteral("kdeconnect.camera.stats")
 
 class StreamWriter;
 class IdleWriter;

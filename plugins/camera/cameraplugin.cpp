@@ -205,6 +205,21 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
                 }
             });
 
+    // Congestion feedback for the phone: forward the writer's periodic backlog
+    // snapshot as kdeconnect.camera.stats so Android can trim the encoder
+    // bitrate before its drop-oldest buffer starts discarding frames. The
+    // writer owns the timer, so the connection dies with it.
+    connect(writer,
+            &StreamWriter::statsTicked,
+            this,
+            [this](qint64 backlogBytes, bool paused) {
+                QVariantMap body;
+                body.insert(QStringLiteral("backlogBytes"), backlogBytes);
+                body.insert(QStringLiteral("paused"), paused);
+                NetworkPacket stats(PACKET_TYPE_CAMERA_STATS, body);
+                sendPacket(stats);
+            });
+
     setStreaming(true);
     Q_EMIT streamPacketReceived();
 
