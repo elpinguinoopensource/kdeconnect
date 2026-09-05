@@ -14,6 +14,7 @@
 
 #include "plugin_camera_debug.h"
 #include "streamwriter.h"
+#include "idlewriter.h"
 
 K_PLUGIN_CLASS_WITH_JSON(CameraPlugin, "kdeconnect_camera.json")
 
@@ -78,6 +79,7 @@ void CameraPlugin::stopCamera()
     if (wasActive) {
         Q_EMIT streamStopped(QStringLiteral("stopped"));
     }
+    resumeIdle();
 }
 
 void CameraPlugin::stopWriter()
@@ -89,6 +91,43 @@ void CameraPlugin::stopWriter()
     m_writer = nullptr;
     writer->stop(); // also closes the payload device
     writer->deleteLater();
+}
+
+void CameraPlugin::ensureIdle()
+{
+    if (!m_idle) {
+        m_idle = new IdleWriter(this);
+        connect(
+            m_idle,
+            &IdleWriter::failed,
+            this,
+            [](const QString &reason) {
+                // The cover is cosmetic: log only, never spam user-visible errors.
+                qCWarning(KDECONNECT_PLUGIN_CAMERA) << "Idle cover writer failed:" << reason;
+            });
+    }
+}
+
+void CameraPlugin::resumeIdle()
+{
+    if (m_writer) {
+        // A live stream owns the v4l2 node (e.g. a previous writer's failed()
+        // racing a new stream packet): never start the cover on top of it.
+        return;
+    }
+    if (!config()->getBool(QStringLiteral("showCover"), true)) {
+        return;
+    }
+    ensureIdle();
+    if (!m_idle->isRunning()) {
+        m_idle->start(); // failure is logged by IdleWriter via failed()
+    }
+}
+
+void CameraPlugin::connected()
+{
+    // Device just became reachable and no stream has run yet: show the cover.
+    resumeIdle();
 }
 
 void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
@@ -114,6 +153,15 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
     const int height = np.get<int>(QStringLiteral("height"));
     const int fps = np.get<int>(QStringLiteral("fps"));
 
+    // Serialise the shared /dev/video node BEFORE constructing the StreamWriter:
+    // its constructor auto-detects the v4l2loopback device by opening it, and
+    // v4l2loopback rejects a second output opener while the cover ffmpeg is
+    // still alive. stop() reaps the child (kill + waitForFinished), so by this
+    // point the node is free for the live pipeline.
+    if (m_idle && m_idle->isRunning()) {
+        m_idle->stop();
+    }
+
     StreamWriter *writer = new StreamWriter(payload, width, height, fps, this);
     m_writer = writer;
 
@@ -122,7 +170,8 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
             &StreamWriter::finished,
             this,
             [this, writerGuard] {
-                if (m_writer == writerGuard) {
+                const bool wasCurrent = (m_writer == writerGuard);
+                if (wasCurrent) {
                     m_writer = nullptr;
                 }
                 setStreaming(false);
@@ -130,13 +179,19 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
                 if (writerGuard) {
                     writerGuard->deleteLater();
                 }
+                // Only hand the node back to the cover when this writer was the
+                // active one (another stream may already own it otherwise).
+                if (wasCurrent) {
+                    resumeIdle();
+                }
             });
     connect(writer,
             &StreamWriter::failed,
             this,
             [this, writerGuard](const QString &reason) {
                 qCWarning(KDECONNECT_PLUGIN_CAMERA) << "Stream pipeline failed:" << reason;
-                if (m_writer == writerGuard) {
+                const bool wasCurrent = (m_writer == writerGuard);
+                if (wasCurrent) {
                     m_writer = nullptr;
                 }
                 setStreaming(false);
@@ -145,11 +200,17 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
                 if (writerGuard) {
                     writerGuard->deleteLater();
                 }
+                if (wasCurrent) {
+                    resumeIdle();
+                }
             });
 
     setStreaming(true);
     Q_EMIT streamPacketReceived();
 
+    // The idle cover was already stopped above (before the StreamWriter
+    // constructor probed the node), so the /dev/video node is free for the
+    // live ffmpeg that writer->start() spawns.
     writer->start();
 
     // start() can fail synchronously (missing ffmpeg or device) before returning.
@@ -159,6 +220,8 @@ void CameraPlugin::handleStreamPacket(const NetworkPacket &np)
             setStreaming(false);
         }
         writer->deleteLater();
+        // The live pipeline never owned the node: bring the cover back.
+        resumeIdle();
     }
 }
 
@@ -182,6 +245,7 @@ void CameraPlugin::receivePacket(const NetworkPacket &np)
         if (wasActive) {
             Q_EMIT streamStopped(QStringLiteral("stopped"));
         }
+        resumeIdle();
     } else if (type == PACKET_TYPE_CAMERA_ERROR) {
         const QString error = np.get<QString>(QStringLiteral("error"));
         qCWarning(KDECONNECT_PLUGIN_CAMERA) << "Camera error:" << error;
@@ -190,6 +254,7 @@ void CameraPlugin::receivePacket(const NetworkPacket &np)
         // Any error (including disconnected/stopped) means the stream is over.
         setStreaming(false);
         Q_EMIT streamStopped(error);
+        resumeIdle();
     }
 }
 

@@ -68,5 +68,12 @@ Kirigami.ScrollablePage {
             //: Suffix for the bitrate spin box (kilobits per second)
             suffix: " " + i18ndc("kdeconnect-plugins", "Abbreviation for kilobits per second", "kbps")
         }
+
+        QQC2.CheckBox {
+            Kirigami.FormData.label: i18nc("@label:checkbox", "Cover image:")
+            text: i18nc("@label:checkbox", "Show KDE Connect logo when idle")
+            checked: config.getBool("showCover", true)
+            onToggled: config.set("showCover", checked)
+        }
     }
 }

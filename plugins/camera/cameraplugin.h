@@ -18,6 +18,7 @@
 #define PACKET_TYPE_CAMERA_ERROR QStringLiteral("kdeconnect.camera.error")
 
 class StreamWriter;
+class IdleWriter;
 
 class CameraPlugin : public KdeConnectPlugin
 {
@@ -38,6 +39,7 @@ public:
 
     QString dbusPath() const override;
     void receivePacket(const NetworkPacket &np) override;
+    void connected() override;
 
 Q_SIGNALS:
     Q_SCRIPTABLE void streamingChanged(bool streaming);
@@ -51,8 +53,15 @@ private:
     void handleStreamPacket(const NetworkPacket &np);
     /// Stops and destroys the active StreamWriter (if any); closes the payload.
     void stopWriter();
+    /// Creates the IdleWriter cover feed lazily (once) and hooks its failure
+    /// signal to the debug log.
+    void ensureIdle();
+    /// Restart the idle cover feed after a live pipeline ends. No-op while a
+    /// live stream is active or when the "showCover" config is disabled.
+    void resumeIdle();
 
     QVariantList m_cameras;
     bool m_streamActive = false;
     StreamWriter *m_writer = nullptr;
+    IdleWriter *m_idle = nullptr;
 };
