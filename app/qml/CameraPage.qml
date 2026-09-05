@@ -45,6 +45,28 @@ Kirigami.ScrollablePage {
         }
     }
 
+    // Maps the stable protocol error codes sent by the Android CameraProtocol
+    // (forwarded verbatim by the C++ plugin) to human-readable labels. Unknown
+    // codes keep the raw value so diagnostics are not lost.
+    function errorLabel(code) {
+        switch (code) {
+        case "in_use":
+            return i18ndc("kdeconnect-app", "Camera error, the camera is busy on the device", "Camera in use by another app")
+        case "denied":
+            return i18ndc("kdeconnect-app", "Camera error, user denied camera permission on the device", "Camera permission denied")
+        case "unsupported":
+            return i18ndc("kdeconnect-app", "Camera error, camera or requested format unsupported", "Camera or format not supported")
+        case "disconnected":
+            return i18ndc("kdeconnect-app", "Camera error, device went away mid-stream", "Device disconnected")
+        case "stopped":
+            return i18ndc("kdeconnect-app", "Camera error, stream stopped on the device", "Stream stopped on the device")
+        case "no_payload":
+            return i18ndc("kdeconnect-app", "Camera error, malformed camera packet", "Invalid camera request")
+        default:
+            return i18nd("kdeconnect-app", "Camera error (%1)", code)
+        }
+    }
+
     function cameraLabel(index) {
         if (index < 0 || index >= root.cameras.length) {
             return ""
@@ -70,11 +92,11 @@ Kirigami.ScrollablePage {
         }
 
         function onErrorReceived(error) {
-            root.errorMessage = error
+            root.errorMessage = errorLabel(error)
         }
 
         function onStreamStopped(reason) {
-            root.stoppedMessage = reason
+            root.stoppedMessage = errorLabel(reason)
         }
     }
 
@@ -208,8 +230,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             visible: root.stoppedMessage.length > 0 && !(root.pluginInterface && root.pluginInterface.streaming)
             type: Kirigami.MessageType.Warning
-            //: %1 is the reason the camera stream ended
-            text: i18nd("kdeconnect-app", "Stream stopped: %1", root.stoppedMessage)
+            text: root.stoppedMessage
         }
     }
 }
