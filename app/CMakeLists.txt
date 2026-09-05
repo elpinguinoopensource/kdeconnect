@@ -39,6 +39,7 @@ ecm_target_qml_sources(kdeconnect-app SOURCES
     qml/BatteryInfo.qml
     qml/ConnectivityInfo.qml
     qml/DevicePage.qml
+    qml/CameraPage.qml
     qml/runcommand.qml
     qml/volume.qml
     qml/MprisSlider.qml

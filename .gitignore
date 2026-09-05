@@ -34,3 +34,6 @@ CMakeLists.txt.user
 /cmake-build*
 app/resources.generated.qrc
 smsapp/resources.generated.qrc
+
+# Orchestrator/coder working specs (internal, not upstream)
+/memory/

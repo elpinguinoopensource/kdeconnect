@@ -14,6 +14,7 @@
 #include "generated/conversationsinterface.h"
 #include "generated/daemoninterface.h"
 #include "generated/deviceclipboardinterface.h"
+#include "generated/devicecamerainterface.h"
 #include "generated/devicefindmyphoneinterface.h"
 #include "generated/deviceinterface.h"
 #include "generated/devicenotificationsinterface.h"
@@ -257,6 +258,18 @@ public:
     explicit ClipboardDbusInterface(const QString &deviceId, QObject *parent = nullptr);
 Q_SIGNALS:
     void autoShareDisabledChangedProxy(bool b);
+};
+
+class KDECONNECTDBUSINTERFACES_EXPORT CameraDeviceDbusInterface : public OrgKdeKdeconnectDeviceCameraInterface
+{
+    Q_OBJECT
+    // Workaround because qdbusxml2cpp is not generating NOTIFY for properties
+    Q_PROPERTY(bool streaming READ streaming NOTIFY streamingChangedProxy)
+public:
+    explicit CameraDeviceDbusInterface(const QString &deviceId, QObject *parent = nullptr);
+
+Q_SIGNALS:
+    void streamingChangedProxy(bool streaming);
 };
 
 #endif

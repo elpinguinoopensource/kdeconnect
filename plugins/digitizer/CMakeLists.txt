@@ -24,7 +24,23 @@ if(HAS_DEPS)
         target_sources(kdeconnect_digitizer PUBLIC linuxdigitizerimpl.cpp)
     endif()
 
-    install(FILES 40-kdeconnect-uinput.rules DESTINATION ${KDE_INSTALL_LIBDIR}/udev/rules.d)
+    # udev is not multilib: it only ever reads rules from <prefix>/lib/udev/rules.d
+    # (plus /run/udev/rules.d and /etc/udev/rules.d), never from lib64.
+    # KDE_INSTALL_LIBDIR resolves to "lib64" on distributions such as openSUSE and
+    # Fedora, which would install this rule where udev ignores it, silently leaving
+    # the digitizer unable to open /dev/uinput.
+    #
+    # Prefer the directory udev itself reports (needs libudev's pkg-config file);
+    # fall back to the conventional non-multilib path when it is unavailable.
+    # The prefix is deliberately not "UDev", which ECM's FindUDev.cmake owns.
+    pkg_check_modules(SystemdUDev udev)
+    if(SystemdUDev_FOUND AND SystemdUDev_udevdir)
+        set(UDEV_RULES_INSTALL_DIR "${SystemdUDev_udevdir}/rules.d")
+    else()
+        set(UDEV_RULES_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/udev/rules.d")
+    endif()
+
+    install(FILES 40-kdeconnect-uinput.rules DESTINATION ${UDEV_RULES_INSTALL_DIR})
 
     message(STATUS "digitizer: Dependencies met, compiling.")
 else()

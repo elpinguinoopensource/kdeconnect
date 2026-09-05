@@ -42,6 +42,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     endif()
     add_subdirectory(shareinputdevices)
     add_subdirectory(shareinputdevicesremote)
+    add_subdirectory(camera)
 endif()
 
 if(NOT APPLE)
